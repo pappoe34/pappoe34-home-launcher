@@ -121,10 +121,12 @@ fun Dial(
     onHubClick: () -> Unit,
     onRingTouched: (Ring) -> Unit,
     onDetent: (Ring) -> Unit,
+    onSettled: (Ring, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val currentOnSettled by rememberUpdatedState(onSettled)
     val decay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
 
     // Haptic / sound tick each time a ring crosses a detent.
@@ -193,6 +195,7 @@ fun Dial(
                         val velocity = tracker.calculateVelocity()
                         scope.launch {
                             if (abs(velocity) > 40f) state.fling(velocity, decay) else state.settle()
+                            currentOnSettled(ring, state.selectedSlot())
                         }
                     }
                 }

@@ -45,6 +45,8 @@ data class LauncherSettings(
     /** Slot -> app key ("package/activity"). */
     val slots: Map<SlotId, String> = emptyMap(),
     val groupNames: Map<Ring, String> = Ring.entries.associateWith { it.defaultGroupName },
+    /** Slot index currently sitting in each ring's selection window; shared with the widget. */
+    val selected: Map<Ring, Int> = Ring.entries.associateWith { 0 },
     val pages: List<WidgetPage> = emptyList(),
     val theme: WheelTheme = WheelTheme.METALLIC,
     val depth3d: Boolean = true,
@@ -55,4 +57,8 @@ data class LauncherSettings(
     val seeded: Boolean = false,
 ) {
     fun groupName(ring: Ring): String = groupNames[ring]?.takeIf { it.isNotBlank() } ?: ring.defaultGroupName
+
+    fun selectedSlot(ring: Ring): Int = Math.floorMod(selected[ring] ?: 0, ring.slotCount)
+
+    fun appKeyAt(slot: SlotId): String? = slots[slot]
 }

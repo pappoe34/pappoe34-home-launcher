@@ -14,6 +14,7 @@ import com.pappoe34.launcher.model.Ring
 import com.pappoe34.launcher.model.SlotId
 import com.pappoe34.launcher.model.WheelTheme
 import com.pappoe34.launcher.model.WidgetSize
+import com.pappoe34.launcher.widget.WheelWidgetProvider
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -112,8 +113,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     // ---- Wheel slots -------------------------------------------------------
 
     fun assign(slot: SlotId, app: AppInfo?) {
-        viewModelScope.launch { preferences.assign(slot, app?.key) }
+        viewModelScope.launch {
+            preferences.assign(slot, app?.key)
+            refreshWidgets()
+        }
     }
+
+    /** A ring settled with [slot] in its window; remember it so the widget shows the same state. */
+    fun setSelected(ring: Ring, slot: Int) {
+        if (state.value.settings.selectedSlot(ring) == Math.floorMod(slot, ring.slotCount)) return
+        viewModelScope.launch {
+            preferences.setSelected(ring, slot)
+            refreshWidgets()
+        }
+    }
+
+    private fun refreshWidgets() = WheelWidgetProvider.updateAll(getApplication<Application>())
 
     fun addToWheel(app: AppInfo): AddToWheelResult {
         val current = state.value
@@ -128,14 +143,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val apps = state.value.apps
         if (apps.isEmpty()) return
         val slots = SlotId.all().zip(apps).associate { (slot, app) -> slot to app.key }
-        viewModelScope.launch { preferences.replaceSlots(slots, markSeeded = true) }
+        viewModelScope.launch {
+            preferences.replaceSlots(slots, markSeeded = true)
+            refreshWidgets()
+        }
     }
 
     fun clearWheels() {
-        viewModelScope.launch { preferences.replaceSlots(emptyMap(), markSeeded = true) }
+        viewModelScope.launch {
+            preferences.replaceSlots(emptyMap(), markSeeded = true)
+            refreshWidgets()
+        }
     }
 
-    fun setGroupName(ring: Ring, name: String) = viewModelScope.launch { preferences.setGroupName(ring, name) }
+    fun setGroupName(ring: Ring, name: String) = viewModelScope.launch { preferences.setGroupName(ring, name); refreshWidgets() }
 
     // ---- Widget pages ------------------------------------------------------
 
@@ -169,8 +190,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     // ---- Settings ----------------------------------------------------------
 
-    fun setTheme(theme: WheelTheme) = viewModelScope.launch { preferences.setTheme(theme) }
-    fun setDepth3d(enabled: Boolean) = viewModelScope.launch { preferences.setDepth3d(enabled) }
+    fun setTheme(theme: WheelTheme) = viewModelScope.launch { preferences.setTheme(theme); refreshWidgets() }
+    fun setDepth3d(enabled: Boolean) = viewModelScope.launch { preferences.setDepth3d(enabled); refreshWidgets() }
     fun setHaptics(enabled: Boolean) = viewModelScope.launch { preferences.setHaptics(enabled) }
     fun setSound(enabled: Boolean) = viewModelScope.launch { preferences.setSound(enabled) }
     fun setBlur(enabled: Boolean) = viewModelScope.launch { preferences.setBlur(enabled) }

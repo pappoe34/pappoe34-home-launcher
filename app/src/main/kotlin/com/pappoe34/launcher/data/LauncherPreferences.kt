@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -48,6 +49,8 @@ class LauncherPreferences(context: Context) {
     }
 
     suspend fun setGroupName(ring: Ring, name: String) = store.edit { it[groupKey(ring)] = name.trim() }
+
+    suspend fun setSelected(ring: Ring, slot: Int) = store.edit { it[selectedKey(ring)] = Math.floorMod(slot, ring.slotCount) }
 
     // ---- Widget pages ------------------------------------------------------
 
@@ -98,6 +101,7 @@ class LauncherPreferences(context: Context) {
         return LauncherSettings(
             slots = slots,
             groupNames = Ring.entries.associateWith { ring -> this[groupKey(ring)] ?: ring.defaultGroupName },
+            selected = Ring.entries.associateWith { ring -> this[selectedKey(ring)] ?: 0 },
             pages = decodePages(this[Keys.PAGES]),
             theme = theme ?: WheelTheme.METALLIC,
             depth3d = this[Keys.DEPTH] ?: true,
@@ -109,6 +113,7 @@ class LauncherPreferences(context: Context) {
     }
 
     private fun groupKey(ring: Ring) = stringPreferencesKey("group_" + ring.name.lowercase())
+    private fun selectedKey(ring: Ring) = intPreferencesKey("selected_" + ring.name.lowercase())
 
     private fun encodePages(pages: List<WidgetPage>): String {
         val array = JSONArray()

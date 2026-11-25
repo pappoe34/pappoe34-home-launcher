@@ -12,6 +12,7 @@
 
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".LauncherApplication"
@@ -42,5 +43,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Pop-up wheel opened from the home-screen widget; translucent, over any launcher. -->
+        <activity
+            android:name=".ui.WheelOverlayActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.pappoe34.launcher.overlay"
+            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|fontScale|density"
+            android:theme="@style/Theme.HomeLauncher.Overlay" />
+
+        <!-- Home-screen widget for other launchers (One UI, etc.). -->
+        <receiver
+            android:name=".widget.WheelWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/wheel_widget_info" />
+        </receiver>
     </application>
 </manifest>

@@ -53,6 +53,13 @@ class RingState(val ring: Ring) {
         angle.animateTo(nearestDetent(angle.value), spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow))
     }
 
+    /** Jump (no animation) so that [slot] sits in the window, keeping the current number of turns. */
+    suspend fun snapToSlot(slot: Int) {
+        val base = windowOffset - slot * detent
+        val turns = ((angle.value - base) / 360f).roundToInt()
+        angle.snapTo(base + turns * 360f)
+    }
+
     /** Rotate so that [slot] sits in the window, taking the short way round. */
     suspend fun bringToWindow(slot: Int) {
         val current = angle.value
