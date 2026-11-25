@@ -28,8 +28,9 @@ import kotlin.math.roundToInt
 
 /**
  * Home-screen widget showing the dial as an image over a 6x6 grid of tap zones.
- * Tapping an icon rotates it into its ring's window; tapping the window launches it;
- * tapping the hub (or anywhere else) opens the full wheel overlay.
+ * Tapping an app opens it (and rotates it into its ring's window for next time);
+ * tapping the hub, an empty slot or anywhere else opens the full wheel overlay.
+ * ACTION_SELECT is kept for select-only taps if a future layout wants them.
  */
 class WheelWidgetProvider : AppWidgetProvider() {
 
@@ -133,28 +134,21 @@ class WheelWidgetProvider : AppWidgetProvider() {
             val ring = layout.ringAt(x, y) ?: return null
             val selected = settings.selectedSlot(ring)
             val slot = layout.slotAt(ring, selected, x, y)
-            if (slot == selected) {
-                val key = settings.appKeyAt(SlotId(ring, slot)) ?: return null
-                return launchIntent(context, key)
+            val key = settings.appKeyAt(SlotId(ring, slot)) ?: return null
+            // One tap opens the app and records it as the ring's selection.
+            val intent = Intent(context, WidgetLaunchActivity::class.java).apply {
+                data = Uri.parse("wheel://launch/${ring.name}/$slot")
+                putExtra(WidgetLaunchActivity.EXTRA_KEY, key)
+                putExtra(WidgetLaunchActivity.EXTRA_RING, ring.name)
+                putExtra(WidgetLaunchActivity.EXTRA_SLOT, slot)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
             }
-            val intent = Intent(context, WheelWidgetProvider::class.java).apply {
-                action = ACTION_SELECT
-                data = Uri.parse("wheel://select/${ring.name}/$slot")
-                putExtra(EXTRA_RING, ring.name)
-                putExtra(EXTRA_SLOT, slot)
-            }
-            return PendingIntent.getBroadcast(context, ring.ordinal * 100 + slot, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        }
-
-        private fun launchIntent(context: Context, key: String): PendingIntent? {
-            val slash = key.indexOf('/')
-            if (slash <= 0) return null
-            val intent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                component = ComponentName(key.substring(0, slash), key.substring(slash + 1))
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-            }
-            return PendingIntent.getActivity(context, key.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            return PendingIntent.getActivity(
+                context,
+                ring.ordinal * 100 + slot,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
         }
 
         private fun overlayIntent(context: Context): PendingIntent {

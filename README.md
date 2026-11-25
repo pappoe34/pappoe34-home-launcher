@@ -8,7 +8,7 @@ A minimal custom Android home screen built with Kotlin and Jetpack Compose.
 - **Three concentric scroll wheels** (6 / 10 / 14 slots) filling the screen width. Each ring is a named **group** (default Daily, Social, Tools) with its own **selection window** on the ring. Drag or fling a ring; it snaps so one app sits in the window. Three chips under the dial show each group's selected app and launch it.
 - Tap an app to launch it. Long-press any slot (or tap an empty one) to pick which app lives there. Assignments persist with DataStore; wheels auto-fill from installed apps on first run.
 - **3D depth** toggle: tilted perspective, tube-shaded rings, bevelled rims and shadows. Off gives a flat look.
-- **Use it inside One UI**: add the **Wheel** widget to any Samsung home page. It shows the dial as an image; tap an app to rotate it into its window, tap the window to open it, tap the centre for the full spinning wheel as a pop-up over One UI. Selection is shared between widget, pop-up and the launcher.
+- **Use it inside One UI**: add the **Wheel** widget to any Samsung home page. It shows the dial as an image; tap any app to open it (the ring remembers it in its window), tap the centre or an empty slot for the full spinning wheel as a pop-up over One UI. Selection is shared between widget, pop-up and the launcher.
 - **Pages and widgets**: swipe left for widget pages, like One UI. Add pages, add any home-screen widget (bind and configure flows included), resize Small / Medium / Large, remove.
 - **Haptic tick** on every detent and an optional synthesised **click sound**.
 - **Swipe-up app drawer** with search; long-press for Add to wheel, App info, Uninstall.

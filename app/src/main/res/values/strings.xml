@@ -54,6 +54,6 @@
     <string name="size_medium">Medium</string>
     <string name="size_large">Large</string>
     <string name="widget_name">Wheel</string>
-    <string name="widget_description">Three app wheels. Tap an app to select it, tap again to open. Tap the centre for the full wheel.</string>
+    <string name="widget_description">Three app wheels. Tap an app to open it. Tap the centre for the full spinning wheel.</string>
     <string name="overlay_hint">Tap outside the wheel to close</string>
 </resources>

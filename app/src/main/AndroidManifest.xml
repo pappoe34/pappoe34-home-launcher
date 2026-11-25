@@ -55,6 +55,15 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|fontScale|density"
             android:theme="@style/Theme.HomeLauncher.Overlay" />
 
+        <!-- Invisible trampoline for widget taps: records the selection, opens the app, finishes. -->
+        <activity
+            android:name=".widget.WidgetLaunchActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="com.pappoe34.launcher.trampoline"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Home-screen widget for other launchers (One UI, etc.). -->
         <receiver
             android:name=".widget.WheelWidgetProvider"
