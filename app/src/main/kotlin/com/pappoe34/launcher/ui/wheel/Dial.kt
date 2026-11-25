@@ -23,15 +23,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -59,29 +66,33 @@ import kotlin.math.sin
 
 /** Pixel geometry of the dial for a given square size. */
 class DialGeometry(density: Density, diameterPx: Float) {
+    val diameter = diameterPx
     val center = Offset(diameterPx / 2f, diameterPx / 2f)
-    private val pad = with(density) { 10.dp.toPx() }
+    private val pad = with(density) { 6.dp.toPx() }
 
-    val iconDp: Map<Ring, Dp> = mapOf(Ring.INNER to 32.dp, Ring.MIDDLE to 38.dp, Ring.OUTER to 42.dp)
+    val iconDp: Map<Ring, Dp> = mapOf(Ring.INNER to 36.dp, Ring.MIDDLE to 42.dp, Ring.OUTER to 46.dp)
     val iconPx: Map<Ring, Float> = iconDp.mapValues { with(density) { it.value.toPx() } }
-    val trackWidthPx: Map<Ring, Float> = iconPx.mapValues { it.value + with(density) { 14.dp.toPx() } }
+    val trackWidthPx: Map<Ring, Float> = iconPx.mapValues { it.value + with(density) { 12.dp.toPx() } }
 
     val radiusPx: Map<Ring, Float>
     val hubRadiusPx: Float
     val hubDp: Dp
+    /** Outer edge of the outer track; touches beyond it are not ours. */
+    val outerEdgePx: Float
 
     init {
-        val outer = diameterPx / 2f - iconPx.getValue(Ring.OUTER) / 2f - pad
+        val outer = diameterPx / 2f - trackWidthPx.getValue(Ring.OUTER) / 2f - pad
         radiusPx = mapOf(Ring.OUTER to outer, Ring.MIDDLE to outer * 0.68f, Ring.INNER to outer * 0.38f)
         hubRadiusPx = (radiusPx.getValue(Ring.INNER) - trackWidthPx.getValue(Ring.INNER) / 2f - with(density) { 6.dp.toPx() })
-            .coerceAtLeast(with(density) { 20.dp.toPx() })
+            .coerceAtLeast(with(density) { 22.dp.toPx() })
         hubDp = with(density) { (hubRadiusPx * 2).toDp() }
+        outerEdgePx = outer + trackWidthPx.getValue(Ring.OUTER) / 2f + pad
     }
 
-    /** Which ring a touch at [offsetFromCenter] grabs; null inside the hub. */
+    /** Which ring a touch at [offsetFromCenter] grabs; null in the hub or outside the dial. */
     fun ringAt(offsetFromCenter: Offset): Ring? {
         val r = offsetFromCenter.getDistance()
-        if (r < hubRadiusPx) return null
+        if (r < hubRadiusPx || r > outerEdgePx) return null
         val inner = radiusPx.getValue(Ring.INNER)
         val middle = radiusPx.getValue(Ring.MIDDLE)
         val outer = radiusPx.getValue(Ring.OUTER)
@@ -96,12 +107,14 @@ class DialGeometry(density: Density, diameterPx: Float) {
 /** Degrees clockwise from 3 o'clock, as Android canvas angles go. */
 private fun angleOf(v: Offset): Float = (atan2(v.y, v.x) * 180.0 / PI).toFloat()
 
-@OptIn(ExperimentalFoundationApi::class)
+private const val DEG = (PI / 180.0).toFloat()
+
 @Composable
 fun Dial(
     rings: Map<Ring, List<AppInfo?>>,
     states: Map<Ring, RingState>,
     palette: WheelPalette,
+    depth3d: Boolean,
     onLaunch: (AppInfo) -> Unit,
     onSlotLongPress: (SlotId) -> Unit,
     onEmptySlotClick: (SlotId) -> Unit,
@@ -127,6 +140,14 @@ fun Dial(
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .graphicsLayer {
+                if (depth3d) {
+                    rotationX = 28f
+                    cameraDistance = 16f * this.density
+                    // Pull the tilted disc up slightly so it stays visually centred.
+                    translationY = -size.height * 0.03f
+                }
+            }
             .pointerInput(states) {
                 val geometry = DialGeometry(density, min(size.width, size.height).toFloat())
                 awaitEachGesture {
@@ -153,17 +174,18 @@ fun Dial(
                         tracker.addDataPoint(change.uptimeMillis, accumulated)
 
                         if (!dragging) {
-                            val arcPx = abs(accumulated) * (PI.toFloat() / 180f) * radius
+                            val arcPx = abs(accumulated) * DEG * radius
                             if (arcPx > viewConfiguration.touchSlop) {
                                 dragging = true
                                 state.beginDrag()
                                 onRingTouched(ring)
                             }
                         }
+                        // Claim every move on a ring so the surrounding pager never steals a spin.
+                        change.consume()
                         if (dragging) {
                             val step = accumulated - applied
                             applied = accumulated
-                            change.consume()
                             scope.launch { state.dragBy(step) }
                         }
                     }
@@ -180,6 +202,7 @@ fun Dial(
             rings = rings,
             states = states,
             palette = palette,
+            depth3d = depth3d,
             onLaunch = onLaunch,
             onSlotLongPress = onSlotLongPress,
             onEmptySlotClick = onEmptySlotClick,
@@ -194,6 +217,7 @@ private fun DialContent(
     rings: Map<Ring, List<AppInfo?>>,
     states: Map<Ring, RingState>,
     palette: WheelPalette,
+    depth3d: Boolean,
     onLaunch: (AppInfo) -> Unit,
     onSlotLongPress: (SlotId) -> Unit,
     onEmptySlotClick: (SlotId) -> Unit,
@@ -204,44 +228,8 @@ private fun DialContent(
         val diameterPx = with(density) { minOf(maxWidth, maxHeight).toPx() }
         val geometry = remember(density, diameterPx) { DialGeometry(density, diameterPx) }
 
-        // Ring tracks, rims, notches and the top marker.
         Canvas(Modifier.fillMaxSize()) {
-            val center = geometry.center
-            val rimStroke = Stroke(width = 1.5.dp.toPx())
-            Ring.entries.forEach { ring ->
-                val style = palette.rings.getValue(ring)
-                val r = geometry.radiusPx.getValue(ring)
-                val w = geometry.trackWidthPx.getValue(ring)
-                drawCircle(color = style.glow, radius = r, center = center, style = Stroke(width = w + 22.dp.toPx()))
-                drawCircle(brush = style.track(center), radius = r, center = center, style = Stroke(width = w))
-                drawCircle(color = style.rim, radius = r + w / 2f, center = center, style = rimStroke)
-                drawCircle(color = style.rim, radius = r - w / 2f, center = center, style = rimStroke)
-
-                val state = states.getValue(ring)
-                rotate(degrees = state.angle.value, pivot = center) {
-                    val inset = 5.dp.toPx()
-                    for (i in 0 until ring.slotCount) {
-                        val a = (i * state.detent + state.detent / 2f - 90f) * (PI.toFloat() / 180f)
-                        val dir = Offset(cos(a), sin(a))
-                        drawLine(
-                            color = style.notch,
-                            start = center + dir * (r - w / 2f + inset),
-                            end = center + dir * (r + w / 2f - inset),
-                            strokeWidth = 2.dp.toPx(),
-                        )
-                    }
-                }
-            }
-            // 12 o'clock marker above the outer ring.
-            val outerEdge = geometry.radiusPx.getValue(Ring.OUTER) + geometry.trackWidthPx.getValue(Ring.OUTER) / 2f
-            val tip = Offset(center.x, center.y - outerEdge + 2.dp.toPx())
-            val marker = Path().apply {
-                moveTo(tip.x, tip.y)
-                lineTo(tip.x - 6.dp.toPx(), tip.y - 9.dp.toPx())
-                lineTo(tip.x + 6.dp.toPx(), tip.y - 9.dp.toPx())
-                close()
-            }
-            drawPath(marker, color = palette.label)
+            drawRings(geometry, states, palette, depth3d)
         }
 
         // App icons, kept upright and positioned by polar coordinates read at layout time.
@@ -257,19 +245,18 @@ private fun DialContent(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .offset {
-                            val a = (state.angle.value + index * state.detent - 90f) * (PI.toFloat() / 180f)
+                            val a = (state.angle.value + index * state.detent - 90f) * DEG
                             IntOffset((radius * cos(a)).roundToInt(), (radius * sin(a)).roundToInt())
                         }
                         .graphicsLayer {
-                            // Scale up smoothly as the slot approaches 12 o'clock.
-                            val a = Math.floorMod((state.angle.value + index * state.detent).roundToInt(), 360)
-                            val dist = min(a, 360 - a).toFloat()
-                            val t = (1f - (dist / state.detent).coerceIn(0f, 1f))
-                            val s = 1f + 0.22f * t
+                            // Swell smoothly as the slot approaches its ring's selection window.
+                            val t = 1f - (state.distanceToWindow(index) / state.detent).coerceIn(0f, 1f)
+                            val s = 1f + 0.28f * t
                             scaleX = s
                             scaleY = s
                         }
                         .size(iconDp)
+                        .then(if (depth3d) Modifier.shadow(6.dp, CircleShape, clip = false) else Modifier)
                         .clip(CircleShape)
                         .then(
                             if (app != null) {
@@ -307,8 +294,19 @@ private fun DialContent(
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(geometry.hubDp)
+                .then(if (depth3d) Modifier.shadow(10.dp, CircleShape, clip = false) else Modifier)
                 .clip(CircleShape)
-                .background(palette.hub)
+                .background(
+                    if (depth3d) {
+                        Brush.radialGradient(
+                            listOf(palette.hub.lighten(0.18f), palette.hub, palette.hub.darken(0.25f)),
+                            center = Offset(geometry.hubRadiusPx * 0.7f, geometry.hubRadiusPx * 0.7f),
+                            radius = geometry.hubRadiusPx * 1.6f,
+                        )
+                    } else {
+                        Brush.linearGradient(listOf(palette.hub, palette.hub))
+                    },
+                )
                 .drawBehind {
                     drawCircle(color = palette.hubContent.copy(alpha = 0.25f), style = Stroke(1.dp.toPx()))
                 }
@@ -319,8 +317,149 @@ private fun DialContent(
                 imageVector = Icons.Filled.Settings,
                 contentDescription = null,
                 tint = palette.hubContent,
-                modifier = Modifier.size(geometry.hubDp * 0.5f),
+                modifier = Modifier.size(geometry.hubDp * 0.45f),
             )
         }
     }
 }
+
+private fun DrawScope.drawRings(
+    geometry: DialGeometry,
+    states: Map<Ring, RingState>,
+    palette: WheelPalette,
+    depth3d: Boolean,
+) {
+    val center = geometry.center
+    val rimStroke = Stroke(width = 1.5.dp.toPx())
+
+    if (depth3d) {
+        // Soft contact shadow under the whole disc.
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent),
+                center = center + Offset(0f, 10.dp.toPx()),
+                radius = geometry.outerEdgePx * 1.05f,
+            ),
+            radius = geometry.outerEdgePx * 1.05f,
+            center = center + Offset(0f, 10.dp.toPx()),
+        )
+    }
+
+    Ring.entries.forEach { ring ->
+        val style = palette.rings.getValue(ring)
+        val state = states.getValue(ring)
+        val r = geometry.radiusPx.getValue(ring)
+        val w = geometry.trackWidthPx.getValue(ring)
+
+        drawCircle(color = style.glow, radius = r, center = center, style = Stroke(width = w + 22.dp.toPx()))
+        drawCircle(brush = style.track(center), radius = r, center = center, style = Stroke(width = w))
+
+        if (depth3d) {
+            // Tube shading: dark at both edges, lit along the crown, so the track reads as a torus.
+            val extent = r + w / 2f
+            val inner = (r - w / 2f) / extent
+            drawCircle(
+                brush = Brush.radialGradient(
+                    inner to Color.Black.copy(alpha = 0.45f),
+                    (inner + (1f - inner) * 0.42f) to Color.White.copy(alpha = 0.22f),
+                    (inner + (1f - inner) * 0.62f) to Color.Transparent,
+                    1f to Color.Black.copy(alpha = 0.5f),
+                    center = center,
+                    radius = extent,
+                ),
+                radius = r,
+                center = center,
+                style = Stroke(width = w),
+            )
+            // Specular sweep from the upper left.
+            drawCircle(
+                brush = Brush.sweepGradient(
+                    0f to Color.Transparent,
+                    0.55f to Color.Transparent,
+                    0.68f to Color.White.copy(alpha = 0.16f),
+                    0.78f to Color.Transparent,
+                    1f to Color.Transparent,
+                    center = center,
+                ),
+                radius = r,
+                center = center,
+                style = Stroke(width = w),
+            )
+            // Bevelled rims: light top edge, dark bottom edge.
+            drawCircle(color = Color.White.copy(alpha = 0.35f), radius = r + w / 2f, center = center, style = rimStroke)
+            drawCircle(color = Color.Black.copy(alpha = 0.55f), radius = r - w / 2f, center = center, style = rimStroke)
+        }
+        drawCircle(color = style.rim, radius = r + w / 2f, center = center, style = rimStroke)
+        drawCircle(color = style.rim, radius = r - w / 2f, center = center, style = rimStroke)
+
+        // Notches between slots rotate with the ring.
+        rotate(degrees = state.angle.value, pivot = center) {
+            val inset = 4.dp.toPx()
+            for (i in 0 until ring.slotCount) {
+                val a = (i * state.detent + state.detent / 2f - 90f) * DEG
+                val dir = Offset(cos(a), sin(a))
+                drawLine(
+                    color = style.notch,
+                    start = center + dir * (r - w / 2f + inset),
+                    end = center + dir * (r + w / 2f - inset),
+                    strokeWidth = 2.dp.toPx(),
+                )
+            }
+        }
+
+        // Selection window: a lit sector on this ring, one slot wide, with bracket ticks.
+        val sweep = state.detent * 0.92f
+        val start = ring.windowAngle - sweep / 2f
+        val windowRect = Rect(center - Offset(r, r), Size(r * 2, r * 2))
+        drawArc(
+            color = style.rim.copy(alpha = 0.28f),
+            startAngle = start,
+            sweepAngle = sweep,
+            useCenter = false,
+            topLeft = windowRect.topLeft,
+            size = windowRect.size,
+            style = Stroke(width = w),
+        )
+        drawArc(
+            color = style.rim,
+            startAngle = start,
+            sweepAngle = sweep,
+            useCenter = false,
+            topLeft = Rect(center - Offset(r + w / 2f, r + w / 2f), Size((r + w / 2f) * 2, (r + w / 2f) * 2)).topLeft,
+            size = Size((r + w / 2f) * 2, (r + w / 2f) * 2),
+            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+        )
+        drawArc(
+            color = style.rim,
+            startAngle = start,
+            sweepAngle = sweep,
+            useCenter = false,
+            topLeft = Rect(center - Offset(r - w / 2f, r - w / 2f), Size((r - w / 2f) * 2, (r - w / 2f) * 2)).topLeft,
+            size = Size((r - w / 2f) * 2, (r - w / 2f) * 2),
+            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+        )
+        // Pointer nub just outside the window.
+        val tipDir = Offset(cos(ring.windowAngle * DEG), sin(ring.windowAngle * DEG))
+        val tip = center + tipDir * (r + w / 2f + 3.dp.toPx())
+        val side = Offset(-tipDir.y, tipDir.x)
+        val marker = Path().apply {
+            moveTo(tip.x, tip.y)
+            val back = tip + tipDir * 8.dp.toPx()
+            lineTo(back.x + side.x * 5.dp.toPx(), back.y + side.y * 5.dp.toPx())
+            lineTo(back.x - side.x * 5.dp.toPx(), back.y - side.y * 5.dp.toPx())
+            close()
+        }
+        drawPath(marker, color = style.rim)
+    }
+}
+
+private fun Color.lighten(amount: Float): Color =
+    Color(
+        red = (red + (1f - red) * amount).coerceIn(0f, 1f),
+        green = (green + (1f - green) * amount).coerceIn(0f, 1f),
+        blue = (blue + (1f - blue) * amount).coerceIn(0f, 1f),
+        alpha = alpha,
+    )
+
+private fun Color.darken(amount: Float): Color =
+    Color(red = red * (1f - amount), green = green * (1f - amount), blue = blue * (1f - amount), alpha = alpha)

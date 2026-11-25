@@ -34,4 +34,23 @@
     <string name="set_default_action">Set as default</string>
     <string name="dismiss">Dismiss</string>
     <string name="launch_failed">Could not open %1$s</string>
+    <string name="empty_slot">Empty slot</string>
+    <string name="ring_inner">Inner ring</string>
+    <string name="ring_middle">Middle ring</string>
+    <string name="ring_outer">Outer ring</string>
+    <string name="group_names">Group names</string>
+    <string name="depth_3d">3D depth</string>
+    <string name="depth_3d_desc">Tilt the dial and shade the rings</string>
+    <string name="add_page">Add page</string>
+    <string name="add_page_hint">Pages hold widgets. Swipe back for the wheels.</string>
+    <string name="empty_page">No widgets yet</string>
+    <string name="add_widget">Add widget</string>
+    <string name="remove_page">Remove page</string>
+    <string name="remove_widget">Remove widget</string>
+    <string name="widget_unavailable">Widget unavailable</string>
+    <string name="widget_add_failed">Could not add widget</string>
+    <string name="pick_widget">Add a widget</string>
+    <string name="size_small">Small</string>
+    <string name="size_medium">Medium</string>
+    <string name="size_large">Large</string>
 </resources>

@@ -5,13 +5,14 @@ A minimal custom Android home screen built with Kotlin and Jetpack Compose.
 ## Features
 
 - Registers for the `HOME` intent so it can be chosen as the device's default launcher. Runs on top of One UI or any other skin; status bar, quick settings and gestures stay the system's.
-- **Three concentric scroll wheels** (6 / 10 / 14 slots). Drag a ring to spin it, fling it, and it snaps to the next app with a soft overshoot. Icons stay upright and swell as they pass 12 o'clock.
+- **Three concentric scroll wheels** (6 / 10 / 14 slots) filling the screen width. Each ring is a named **group** (default Daily, Social, Tools) with its own **selection window** on the ring. Drag or fling a ring; it snaps so one app sits in the window. Three chips under the dial show each group's selected app and launch it.
 - Tap an app to launch it. Long-press any slot (or tap an empty one) to pick which app lives there. Assignments persist with DataStore; wheels auto-fill from installed apps on first run.
+- **3D depth** toggle: tilted perspective, tube-shaded rings, bevelled rims and shadows. Off gives a flat look.
+- **Pages and widgets**: swipe left for widget pages, like One UI. Add pages, add any home-screen widget (bind and configure flows included), resize Small / Medium / Large, remove.
 - **Haptic tick** on every detent and an optional synthesised **click sound**.
 - **Swipe-up app drawer** with search; long-press for Add to wheel, App info, Uninstall.
 - **Themes**: Metallic, Neon, Glass, Dynamic (Material You). **Wallpaper blur** via window blur-behind on Android 12+, no permissions needed.
-- Clock and date header, name of the app at 12 o'clock under the dial, settings in the hub.
-- Reloads automatically when apps are installed, removed or updated. Back collapses the drawer and is otherwise swallowed.
+- Reloads automatically when apps are installed, removed or updated. Back collapses the drawer, then returns to the dial, and is otherwise swallowed.
 
 ## Requirements
 
@@ -56,13 +57,16 @@ app/src/main/kotlin/com/pappoe34/launcher/
   data/AppRepository.kt        PackageManager queries, launch, uninstall, package-change flow
   data/LauncherPreferences.kt  DataStore: slot assignments, theme, toggles
   data/TickPlayer.kt           Synthesised click sound via SoundPool
+  data/LauncherWidgetHost.kt   AppWidgetHost wrapper and provider listing
   model/                       AppInfo, Ring, SlotId, WheelTheme, LauncherSettings
   ui/LauncherViewModel.kt      UI state, wheel assignment, settings
   ui/WheelHomeScreen.kt        Clock, dial, swipe-up drawer, sheets
   ui/AppDrawer.kt              Searchable grid + long-press menu
+  ui/pages/WidgetPageScreen.kt Widget page: hosted AppWidgetHostViews, resize, remove
+  ui/widgets/WidgetBinder.kt   Contract the activity implements for bind/configure
   ui/wheel/Dial.kt             Canvas rings, angular drag/fling gestures, slot icons
   ui/wheel/RingState.kt        Per-ring rotation, fling-to-detent, focus
   ui/wheel/WheelPalette.kt     Theme palettes
-  ui/sheets/                   App picker and settings bottom sheets
+  ui/sheets/                   App picker, widget picker and settings bottom sheets
   ui/theme/Theme.kt            Material 3 theme with dynamic colour
 ```

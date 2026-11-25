@@ -7,10 +7,13 @@ import com.pappoe34.launcher.LauncherApplication
 import com.pappoe34.launcher.data.AppRepository
 import com.pappoe34.launcher.data.LauncherPreferences
 import com.pappoe34.launcher.model.AppInfo
+import com.pappoe34.launcher.data.LauncherWidgetHost
 import com.pappoe34.launcher.model.LauncherSettings
+import com.pappoe34.launcher.model.PlacedWidget
 import com.pappoe34.launcher.model.Ring
 import com.pappoe34.launcher.model.SlotId
 import com.pappoe34.launcher.model.WheelTheme
+import com.pappoe34.launcher.model.WidgetSize
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -66,6 +69,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val app = application as LauncherApplication
     private val repository: AppRepository = app.appRepository
     private val preferences: LauncherPreferences = app.preferences
+    private val widgetHost: LauncherWidgetHost = app.widgetHost
 
     private val local = MutableStateFlow(LauncherUiState())
 
@@ -131,9 +135,42 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.replaceSlots(emptyMap(), markSeeded = true) }
     }
 
+    fun setGroupName(ring: Ring, name: String) = viewModelScope.launch { preferences.setGroupName(ring, name) }
+
+    // ---- Widget pages ------------------------------------------------------
+
+    fun addPage() = viewModelScope.launch { preferences.addPage() }
+
+    fun removePage(pageId: String) {
+        val page = state.value.settings.pages.firstOrNull { it.id == pageId } ?: return
+        page.widgets.forEach { widgetHost.deleteAppWidgetId(it.appWidgetId) }
+        viewModelScope.launch { preferences.removePage(pageId) }
+    }
+
+    /** Called once the activity has bound (and, if needed, configured) [appWidgetId]. */
+    fun placeWidget(pageId: String, appWidgetId: Int) {
+        val info = widgetHost.providerFor(appWidgetId)
+        val density = getApplication<Application>().resources.displayMetrics.density
+        val minHeightDp = ((info?.minHeight ?: 0) / density).toInt()
+        val size = when {
+            minHeightDp > WidgetSize.MEDIUM.heightDp -> WidgetSize.LARGE
+            minHeightDp > WidgetSize.SMALL.heightDp -> WidgetSize.MEDIUM
+            else -> WidgetSize.SMALL
+        }
+        viewModelScope.launch { preferences.placeWidget(pageId, PlacedWidget(appWidgetId, size)) }
+    }
+
+    fun removeWidget(appWidgetId: Int) {
+        widgetHost.deleteAppWidgetId(appWidgetId)
+        viewModelScope.launch { preferences.removeWidget(appWidgetId) }
+    }
+
+    fun resizeWidget(appWidgetId: Int, size: WidgetSize) = viewModelScope.launch { preferences.resizeWidget(appWidgetId, size) }
+
     // ---- Settings ----------------------------------------------------------
 
     fun setTheme(theme: WheelTheme) = viewModelScope.launch { preferences.setTheme(theme) }
+    fun setDepth3d(enabled: Boolean) = viewModelScope.launch { preferences.setDepth3d(enabled) }
     fun setHaptics(enabled: Boolean) = viewModelScope.launch { preferences.setHaptics(enabled) }
     fun setSound(enabled: Boolean) = viewModelScope.launch { preferences.setSound(enabled) }
     fun setBlur(enabled: Boolean) = viewModelScope.launch { preferences.setBlur(enabled) }

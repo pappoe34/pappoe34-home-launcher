@@ -38,6 +38,7 @@ import com.pappoe34.launcher.ui.sheetBottomPadding
 @Composable
 fun AppPickerSheet(
     slot: SlotId,
+    groupName: String,
     current: AppInfo?,
     apps: List<AppInfo>,
     onPick: (AppInfo?) -> Unit,
@@ -52,7 +53,7 @@ fun AppPickerSheet(
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxHeight(0.85f).padding(horizontal = 16.dp).sheetBottomPadding()) {
             Text(
-                text = stringResource(R.string.pick_app_for_slot, slot.ring.name.lowercase().replaceFirstChar { it.titlecase() }, slot.index + 1),
+                text = stringResource(R.string.pick_app_for_slot, groupName, slot.index + 1),
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(12.dp))
