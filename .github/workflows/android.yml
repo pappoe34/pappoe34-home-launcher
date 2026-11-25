@@ -79,6 +79,24 @@ jobs:
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
 
+      - name: Update rolling "latest" pre-release
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk "home-launcher-debug.apk"
+          REL_APK=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          cp "$REL_APK" "home-launcher-release.apk"
+          git tag -f latest "$GITHUB_SHA"
+          git push -f origin latest
+          gh release delete latest --yes --cleanup-tag=false 2>/dev/null || true
+          gh release create latest \
+            --prerelease \
+            --title "Latest build (${GITHUB_REF_NAME} @ ${GITHUB_SHA::7})" \
+            --notes "Rolling pre-release, rebuilt on every push. Install home-launcher-debug.apk on the phone (allow installs from your browser when asked)." \
+            home-launcher-debug.apk home-launcher-release.apk
+
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
