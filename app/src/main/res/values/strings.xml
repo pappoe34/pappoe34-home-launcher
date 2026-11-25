@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Home Launcher</string>
+    <string name="search_apps">Search apps</string>
+    <string name="clear_search">Clear search</string>
+    <string name="no_apps">No apps match</string>
+    <string name="app_count">%1$d apps</string>
+    <string name="app_info">App info</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="set_default_title">Not your default launcher yet</string>
+    <string name="set_default_body">Set Home Launcher as default so the Home button opens it.</string>
+    <string name="set_default_action">Set as default</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="launch_failed">Could not open %1$s</string>
+</resources>
