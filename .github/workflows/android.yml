@@ -37,9 +37,6 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Lint
-        run: ./gradlew lintDebug --no-daemon --stacktrace
-
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
@@ -70,6 +67,9 @@ jobs:
           name: home-launcher-release
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Lint
+        run: ./gradlew lintDebug --no-daemon --stacktrace
 
       - name: Upload lint report
         if: always()
