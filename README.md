@@ -13,6 +13,7 @@ A minimal custom Android home screen built with Kotlin and Jetpack Compose.
 - **Haptic tick** on every detent and an optional synthesised **click sound**.
 - **Swipe-up app drawer** with search; long-press for Add to wheel, App info, Uninstall.
 - **Themes**: Metallic, Neon, Glass, Dynamic (Material You). **Wallpaper blur** via window blur-behind on Android 12+, no permissions needed.
+- **Landscape / car head units**: on an Android head unit or tablet the dial sits on the left with the group chips stacked on the right. Install the APK from USB, set it as default home, and put the unit's CarPlay, Android Auto, radio and AC apps on the wheels.
 - Reloads automatically when apps are installed, removed or updated. Back collapses the drawer, then returns to the dial, and is otherwise swallowed.
 
 ## Requirements

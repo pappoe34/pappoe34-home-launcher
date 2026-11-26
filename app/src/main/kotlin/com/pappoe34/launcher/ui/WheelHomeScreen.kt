@@ -2,6 +2,7 @@ package com.pappoe34.launcher.ui
 
 import android.app.role.RoleManager
 import android.content.Context
+import android.content.res.Configuration
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -55,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -181,7 +183,12 @@ fun WheelHomeScreen(viewModel: LauncherViewModel = viewModel()) {
                 .padding(innerPadding),
         ) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                ClockBar(color = palette.label, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+                val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+                ClockBar(
+                    color = palette.label,
+                    compact = landscape,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = if (landscape) 2.dp else 6.dp),
+                )
 
                 if (state.showDefaultPrompt) {
                     DefaultLauncherPrompt(
@@ -325,7 +332,7 @@ private fun defaultLauncherIntent(context: Context): Intent {
 }
 
 @Composable
-private fun ClockBar(color: Color, modifier: Modifier = Modifier) {
+private fun ClockBar(color: Color, compact: Boolean = false, modifier: Modifier = Modifier) {
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -338,10 +345,10 @@ private fun ClockBar(color: Color, modifier: Modifier = Modifier) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
         Text(
             text = now.format(timeFormatter),
-            fontSize = 34.sp,
+            fontSize = if (compact) 24.sp else 34.sp,
             fontWeight = FontWeight.Light,
             color = color,
-            lineHeight = 36.sp,
+            lineHeight = if (compact) 26.sp else 36.sp,
         )
         Spacer(Modifier.width(12.dp))
         Text(

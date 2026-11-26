@@ -1,5 +1,6 @@
 package com.pappoe34.launcher.ui.wheel
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,8 +67,10 @@ fun DialPage(
         }
     }
 
-    Column(modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val dial: @Composable (Modifier) -> Unit = { dialModifier ->
+        Box(dialModifier, contentAlignment = Alignment.Center) {
             Dial(
                 rings = state.rings,
                 states = ringStates,
@@ -81,26 +86,45 @@ fun DialPage(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Ring.entries.forEach { ring ->
-                val ringState = ringStates.getValue(ring)
-                val selected by remember(ring, state) {
-                    derivedStateOf { state.rings[ring]?.getOrNull(ringState.selectedSlot()) }
-                }
-                GroupChip(
-                    name = state.settings.groupName(ring),
-                    accent = palette.rings.getValue(ring).rim,
-                    app = selected,
-                    labelColor = palette.label,
-                    onClick = {
-                        val app = selected
-                        if (app != null) onLaunch(app) else scope.launch { ringState.bringToWindow(0) }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
+    }
+
+    val chips: @Composable (Ring, Modifier) -> Unit = { ring, chipModifier ->
+        val ringState = ringStates.getValue(ring)
+        val selected by remember(ring, state) {
+            derivedStateOf { state.rings[ring]?.getOrNull(ringState.selectedSlot()) }
+        }
+        GroupChip(
+            name = state.settings.groupName(ring),
+            accent = palette.rings.getValue(ring).rim,
+            app = selected,
+            labelColor = palette.label,
+            onClick = {
+                val app = selected
+                if (app != null) onLaunch(app) else scope.launch { ringState.bringToWindow(0) }
+            },
+            modifier = chipModifier,
+        )
+    }
+
+    if (landscape) {
+        // Car head units and tablets: dial on the left, group chips stacked on the right.
+        Row(modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            dial(Modifier.weight(1f).fillMaxHeight().padding(horizontal = 6.dp, vertical = 2.dp))
+            Column(
+                modifier = Modifier.width(240.dp).fillMaxHeight().padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+            ) {
+                Ring.entries.reversed().forEach { ring -> chips(ring, Modifier.fillMaxWidth()) }
+            }
+        }
+    } else {
+        Column(modifier.fillMaxSize()) {
+            dial(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Ring.entries.forEach { ring -> chips(ring, Modifier.weight(1f)) }
             }
         }
     }
